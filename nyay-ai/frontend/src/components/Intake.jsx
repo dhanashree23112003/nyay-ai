@@ -45,6 +45,7 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
 
   const recognitionRef  = useRef(null);
   const recordingActive = useRef(false);
+  const finalTextRef    = useRef("");   // persists across recognition restarts
   const chatEndRef      = useRef(null);
   const [speechSupported] = useState(() =>
     typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)
@@ -81,37 +82,48 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
   const startRecording = () => {
     if (!speechSupported) { alert("Please use Google Chrome for voice input."); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const r  = new SR();
-    r.continuous     = true;
-    r.interimResults = true;
-    r.lang           = lang === "english" ? "en-US" : "hi-IN";
 
-    let finalText = "";
+    finalTextRef.current = "";   // reset on fresh recording session
     recordingActive.current = true;
 
-    r.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += t + " ";
-        else interim += t;
-      }
-      setTranscript(finalText + interim);
-      setInputText(finalText + interim);
+    const launch = () => {
+      const r = new SR();
+      r.continuous     = true;
+      r.interimResults = true;
+      r.lang           = lang === "english" ? "en-US" : "hi-IN";
+
+      r.onresult = (e) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          // Only append truly new final results — guard against re-emission on restart
+          if (e.results[i].isFinal) {
+            if (!finalTextRef.current.endsWith(t.trim() + " ")) {
+              finalTextRef.current += t + " ";
+            }
+          } else {
+            interim += t;
+          }
+        }
+        setTranscript(finalTextRef.current + interim);
+        setInputText(finalTextRef.current + interim);
+      };
+
+      r.onerror = (ev) => {
+        if (ev.error !== "no-speech") { recordingActive.current = false; setRecording(false); }
+      };
+
+      r.onend = () => {
+        if (!recordingActive.current) { setRecording(false); return; }
+        // Create a fresh SR object on restart to avoid Chrome re-emitting old results
+        try { launch(); } catch { recordingActive.current = false; setRecording(false); }
+      };
+
+      r.start();
+      recognitionRef.current = r;
     };
 
-    r.onerror = (ev) => {
-      if (ev.error !== "no-speech") { recordingActive.current = false; setRecording(false); }
-    };
-
-    // Auto-restart — Chrome stops after silence; keep mic alive until officer taps Stop
-    r.onend = () => {
-      if (!recordingActive.current) { setRecording(false); return; }
-      try { r.start(); } catch { recordingActive.current = false; setRecording(false); }
-    };
-
-    r.start();
-    recognitionRef.current = r;
+    launch();
     setRecording(true);
   };
 
