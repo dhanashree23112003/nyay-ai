@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nyay AI — Digital FIR Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { background: #eef2f7; color: #0d1b3e; }
+
+      ::-webkit-scrollbar { width: 5px; height: 5px; }
+      ::-webkit-scrollbar-track { background: #eef2f7; }
+      ::-webkit-scrollbar-thumb { background: #b0bed4; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #8899b4; }
+      ::selection { background: rgba(201,75,0,0.15); }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(22px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.35; }
+      }
+      @keyframes loading {
+        0%   { transform: translateX(-100%); }
+        100% { transform: translateX(260%); }
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      @keyframes slideInRight {
+        from { transform: translateX(20px); opacity: 0; }
+        to   { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50%       { transform: translateY(-16px); }
+      }
+
+      @media print {
+        body * { visibility: hidden !important; }
+        #fir-print-content, #fir-print-content * { visibility: visible !important; }
+        #fir-print-content {
+          position: fixed !important;
+          inset: 0;
+          background: white !important;
+          padding: 48px 64px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
