@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useMobile } from "../hooks/useMobile";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -24,6 +25,7 @@ const URGENCY = {
 const CONFIDENCE_DOT = { high: "#22c55e", medium: "#f59e0b", low: "#94a3b8" };
 
 export default function Intake({ user, onDraft, onDashboard, initialCase }) {
+  const isMobile = useMobile();
   const [lang,           setLang]           = useState(initialCase ? "english" : null);
   const [subPhase,       setSubPhase]       = useState(initialCase ? "intake" : "home");
   const [inputText,      setInputText]      = useState("");
@@ -228,7 +230,7 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
               </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
               {/* English */}
               <button onClick={() => setLang("english")} style={{
                 background: C.white, border: `2px solid ${C.border}`,
@@ -347,15 +349,16 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
 
         {/* ── INTAKE ── */}
         {lang && subPhase === "intake" && extracted && (
-          <div className="intake-layout" style={{ display: "flex", gap: 20, paddingTop: 20, maxWidth: 1260, margin: "0 auto", animation: "fadeIn 0.5s ease" }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, paddingTop: 16, maxWidth: 1260, margin: "0 auto", animation: "fadeIn 0.5s ease" }}>
 
             {/* Chat panel */}
-            <div className="chat-panel" style={{
-              width: 360, flexShrink: 0,
+            <div style={{
+              width: isMobile ? "100%" : 360, flexShrink: 0,
               background: C.white, border: `1px solid ${C.border}`,
-              borderRadius: 10, padding: 18,
+              borderRadius: 10, padding: 16,
               display: "flex", flexDirection: "column", gap: 10,
-              maxHeight: "calc(100vh - 96px)", position: "sticky", top: 72,
+              maxHeight: isMobile ? 320 : "calc(100vh - 96px)",
+              position: isMobile ? "static" : "sticky", top: 72,
               boxShadow: "0 2px 10px rgba(13,36,97,0.07)",
             }}>
               <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 10, marginBottom: 2 }}>

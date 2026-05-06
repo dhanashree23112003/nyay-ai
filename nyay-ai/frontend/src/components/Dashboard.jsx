@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMobile } from "../hooks/useMobile";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -31,11 +32,13 @@ const URGENCY = {
 };
 
 export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase }) {
-  const [cases,     setCases]     = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [filter,    setFilter]    = useState("all");
-  const [search,    setSearch]    = useState("");
-  const [activeNav, setActiveNav] = useState("cases");
+  const isMobile = useMobile();
+  const [cases,       setCases]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filter,      setFilter]      = useState("all");
+  const [search,      setSearch]      = useState("");
+  const [activeNav,   setActiveNav]   = useState("cases");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => { fetchCases(); }, []);
 
@@ -80,11 +83,18 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: "'Inter', sans-serif", color: C.text1 }}>
 
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} />
+      )}
+
       {/* ── Sidebar ── */}
-      <aside className="sidebar" style={{
+      <aside style={{
         width: 252, flexShrink: 0, background: C.sidebar,
         display: "flex", flexDirection: "column",
-        position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50,
+        position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 100,
+        transform: isMobile ? (sidebarOpen ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
+        transition: "transform 0.3s ease",
       }}>
         {/* Logo */}
         <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
@@ -147,22 +157,30 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
       </aside>
 
       {/* ── Main ── */}
-      <main className="main-content" style={{ marginLeft: 252, flex: 1 }}>
+      <main style={{ marginLeft: isMobile ? 0 : 252, flex: 1, minWidth: 0 }}>
         {/* Top bar */}
         <div style={{
-          padding: "18px 32px", background: C.white,
+          padding: isMobile ? "14px 16px" : "18px 32px", background: C.white,
           borderBottom: `1px solid ${C.border}`,
           display: "flex", justifyContent: "space-between", alignItems: "center",
           position: "sticky", top: 0, zIndex: 40,
           boxShadow: "0 1px 6px rgba(13,36,97,0.06)",
         }}>
-          <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: C.navy, fontFamily: "'Georgia', serif" }}>
-              {activeNav === "cases" ? "FIR Case Management" : activeNav === "analytics" ? "Case Analytics" : "Settings"}
-            </h1>
-            <p style={{ fontSize: 12, color: C.text3, marginTop: 2 }}>
-              {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {isMobile && (
+              <button onClick={() => setSidebarOpen(true)} style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 7,
+                padding: "6px 10px", cursor: "pointer", fontSize: 18, color: C.navy,
+              }}>☰</button>
+            )}
+            <div>
+              <h1 style={{ fontSize: isMobile ? 16 : 19, fontWeight: 700, color: C.navy, fontFamily: "'Georgia', serif" }}>
+                {activeNav === "cases" ? "FIR Cases" : activeNav === "analytics" ? "Analytics" : "Settings"}
+              </h1>
+              {!isMobile && <p style={{ fontSize: 12, color: C.text3, marginTop: 2 }}>
+                {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              </p>}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button onClick={fetchCases} style={{
@@ -182,7 +200,7 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
           </div>
         </div>
 
-        <div style={{ padding: "28px 32px" }}>
+        <div style={{ padding: isMobile ? "16px 12px" : "28px 32px" }}>
           {activeNav === "cases" && (
             <CasesView cases={cases} filtered={filtered} loading={loading} stats={stats} filter={filter} search={search} onFilter={setFilter} onSearch={setSearch} onNewIntake={onNewIntake} onUpdateStatus={updateStatus} onDelete={deleteCase} onContinue={onContinueCase} onRefresh={fetchCases} />
           )}
@@ -197,6 +215,7 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
 /* ── Cases View ── */
 
 function CasesView({ cases, filtered, loading, stats, filter, search, onFilter, onSearch, onNewIntake, onUpdateStatus, onDelete, onContinue, onRefresh }) {
+  const isMobile = useMobile();
   const statCards = [
     { label: "Total FIR Cases", labelHi: "कुल FIR",      value: stats.total,    icon: "📁", color: C.navy,    bg: "#e8edf8"  },
     { label: "Under Review",    labelHi: "समीक्षाधीन",    value: stats.active,   icon: "🔄", color: "#1e40af", bg: "#dbeafe"  },
@@ -207,7 +226,7 @@ function CasesView({ cases, filtered, loading, stats, filter, search, onFilter, 
   return (
     <>
       {/* Stats */}
-      <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 26 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 16 : 26 }}>
         {statCards.map((s, i) => (
           <div key={i} style={{
             background: C.white, border: `1px solid ${C.border}`,
@@ -253,10 +272,13 @@ function CasesView({ cases, filtered, loading, stats, filter, search, onFilter, 
       </div>
 
       {/* Table */}
-      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 6px rgba(13,36,97,0.05)" }}>
+      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, overflowX: isMobile ? "auto" : "hidden", boxShadow: "0 1px 6px rgba(13,36,97,0.05)" }}>
         {/* Header */}
-        <div style={{ display: "grid", gridTemplateColumns: "110px 160px 1fr 120px 90px 110px 100px", padding: "11px 20px", background: "#f8fafc", borderBottom: `1px solid ${C.border}` }}>
-          {["CASE ID", "CASE NAME ✏️", "COMPLAINANT", "IPC SECTION", "URGENCY", "STATUS", "ACTIONS"].map(h => (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "100px 140px 1fr 90px" : "110px 160px 1fr 120px 90px 110px 100px", minWidth: isMobile ? 420 : "auto", padding: "11px 14px", background: "#f8fafc", borderBottom: `1px solid ${C.border}` }}>
+          {(isMobile
+            ? ["CASE ID", "NAME", "COMPLAINANT", "ACTIONS"]
+            : ["CASE ID", "CASE NAME ✏️", "COMPLAINANT", "IPC SECTION", "URGENCY", "STATUS", "ACTIONS"]
+          ).map(h => (
             <span key={h} style={{ fontSize: 10, letterSpacing: 1.5, color: C.text3, textTransform: "uppercase", fontWeight: 700 }}>{h}</span>
           ))}
         </div>
@@ -279,6 +301,7 @@ function CasesView({ cases, filtered, loading, stats, filter, search, onFilter, 
 }
 
 function CaseRow({ c, i, onUpdateStatus, onDelete, onContinue, onRefresh }) {
+  const isMobile = useMobile();
   const [expanded,  setExpanded]  = useState(false);
   const [nameEdit,  setNameEdit]  = useState(false);
   const [nameVal,   setNameVal]   = useState(c.case_name || "");
@@ -308,8 +331,9 @@ function CaseRow({ c, i, onUpdateStatus, onDelete, onContinue, onRefresh }) {
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
-          display: "grid", gridTemplateColumns: "110px 160px 1fr 120px 90px 110px 100px",
-          padding: "12px 20px", borderBottom: `1px solid ${C.borderLt}`,
+          display: "grid", gridTemplateColumns: isMobile ? "100px 140px 1fr 90px" : "110px 160px 1fr 120px 90px 110px 100px",
+          minWidth: isMobile ? 420 : "auto",
+          padding: isMobile ? "12px 14px" : "12px 20px", borderBottom: `1px solid ${C.borderLt}`,
           alignItems: "center", cursor: "pointer",
           background: expanded ? "#f8fafc" : C.white,
           transition: "background 0.15s",

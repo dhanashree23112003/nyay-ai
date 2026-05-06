@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMobile } from "../hooks/useMobile";
 
 const C = {
   navy:    "#0d2461",
@@ -18,6 +19,7 @@ const DEMO_USERS = [
 ];
 
 export default function Login({ onLogin, onBack }) {
+  const isMobile = useMobile();
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [name,     setName]     = useState("");
@@ -67,8 +69,8 @@ export default function Login({ onLogin, onBack }) {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ display: "flex", background: C.white, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 48px rgba(13,36,97,0.14)", border: `1px solid ${C.border}`, width: "100%", maxWidth: 900 }}>
 
-          {/* Left panel */}
-          <div style={{ flex: 1, background: C.navy, padding: "52px 44px", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+          {/* Left panel — hidden on mobile */}
+          {!isMobile && <div style={{ flex: 1, background: C.navy, padding: "52px 44px", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: -60, right: -60, width: 260, height: 260, borderRadius: "50%", background: "rgba(201,75,0,0.12)", filter: "blur(50px)" }} />
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ fontSize: 36, marginBottom: 20 }}>🛡️</div>
@@ -93,10 +95,10 @@ export default function Login({ onLogin, onBack }) {
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>For use by Indian Police Personnel only. Unauthorised access is prohibited under IT Act 2000.</div>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Right form */}
-          <div style={{ width: 420, padding: "52px 44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={{ width: isMobile ? "100%" : 420, padding: isMobile ? "32px 20px" : "52px 44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ marginBottom: 6 }}>
               <div style={{ display: "flex", borderRadius: 7, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 28 }}>
                 {["login", "signup"].map(m => (
