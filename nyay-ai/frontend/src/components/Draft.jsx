@@ -144,7 +144,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
           </div>
 
           {/* Document body */}
-          <div style={{
+          <div id="fir-print-content" style={{
             background: C.white, borderRadius: "0 0 10px 10px",
             padding: "48px 56px",
             boxShadow: "0 6px 40px rgba(13,36,97,0.12)",
@@ -155,7 +155,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
                 <p style={{ fontFamily: "'Georgia', serif", fontSize: 16 }}>No draft content available.</p>
               </div>
             ) : (
-              <pre id="fir-print-content" style={{
+              <pre style={{
                 fontFamily: "'Georgia', 'Times New Roman', serif",
                 fontSize: 15, lineHeight: 2.05,
                 color: "#1a1a1a", whiteSpace: "pre-wrap", margin: 0,
