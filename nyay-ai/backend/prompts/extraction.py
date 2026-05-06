@@ -123,16 +123,34 @@ IPC sections to consider:
 COMPLAINT_DRAFT_PROMPT = """
 You are a legal document assistant in India. Given the structured case data below, generate a formal FIR (First Information Report) complaint draft in English.
 
+POLICE STATION MAPPING — use the incident_location to determine the correct station:
+- Pune / Pimpri / Chinchwad / Kothrud / Hinjewadi → Pune City Police Station, Pune
+- Mumbai / Bandra / Andheri / Dadar / Worli / Kurla / Borivali → use the specific area + "Police Station, Mumbai" (e.g. "Bandra Police Station, Mumbai")
+- Delhi / New Delhi / Connaught Place / Saket / Dwarka → use area + "Police Station, New Delhi"
+- Bangalore / Bengaluru / Koramangala / Whitefield / Indiranagar → use area + "Police Station, Bengaluru"
+- Chennai / T Nagar / Adyar / Anna Nagar → use area + "Police Station, Chennai"
+- Hyderabad / Banjara Hills / Hitech City / Secunderabad → use area + "Police Station, Hyderabad"
+- Kolkata / Salt Lake / Park Street / Howrah → use area + "Police Station, Kolkata"
+- Ahmedabad / Surat / Vadodara / Rajkot → use area + "Police Station, [City]"
+- Nagpur → Nagpur City Police Station, Nagpur
+- Nashik → Nashik City Police Station, Nashik
+- Thane → Thane City Police Station, Thane
+- Noida → Noida Sector 20 Police Station, Noida
+- Gurgaon / Gurugram → DLF Phase 1 Police Station, Gurugram
+- For any other location not listed: derive the station name from the location (e.g. "Koregaon Park, Pune" → "Koregaon Park Police Station, Pune")
+- NEVER write [Police Station] or [City] as placeholders — always use real names derived from the location
+
 The complaint should:
 - Be formal and use proper legal language
 - Include all available facts in a structured narrative
 - Reference the applicable IPC sections
 - Be ready to print and submit to the police station
+- Use today's actual date if no date is provided
 
 Format:
 TO,
 The Station House Officer,
-[Police Station], [City]
+[Derive actual station name from location — see mapping above]
 
 SUBJECT: Complaint regarding [nature of incident]
 
