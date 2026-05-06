@@ -81,7 +81,7 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
     <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: "'Inter', sans-serif", color: C.text1 }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{
+      <aside className="sidebar" style={{
         width: 252, flexShrink: 0, background: C.sidebar,
         display: "flex", flexDirection: "column",
         position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50,
@@ -147,7 +147,7 @@ export default function Dashboard({ user, onLogout, onNewIntake, onContinueCase 
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ marginLeft: 252, flex: 1 }}>
+      <main className="main-content" style={{ marginLeft: 252, flex: 1 }}>
         {/* Top bar */}
         <div style={{
           padding: "18px 32px", background: C.white,
@@ -207,7 +207,7 @@ function CasesView({ cases, filtered, loading, stats, filter, search, onFilter, 
   return (
     <>
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 26 }}>
+      <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 26 }}>
         {statCards.map((s, i) => (
           <div key={i} style={{
             background: C.white, border: `1px solid ${C.border}`,

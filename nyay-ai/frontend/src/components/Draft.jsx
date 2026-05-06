@@ -29,6 +29,22 @@ export default function Draft({ state, onDashboard, onNewCase }) {
     setTimeout(() => setCopied(false), 2200);
   };
 
+  const handlePrint = () => {
+    const w = window.open("", "_blank");
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>FIR Draft — Nyay AI</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Georgia', 'Times New Roman', serif; font-size: 15px; line-height: 2; color: #000; padding: 2cm; }
+        pre { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: inherit; }
+        @page { margin: 2cm; size: A4; }
+      </style>
+    </head><body><pre>${(draft || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); w.close(); }, 300);
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text1, fontFamily: "'Inter', sans-serif" }}>
 
@@ -78,7 +94,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           <ActionBtn onClick={handleCopy}>{copied ? "✓ Copied!" : "Copy Text"}</ActionBtn>
-          <ActionBtn onClick={() => window.print()} amber>🖨️ Print / Save PDF</ActionBtn>
+          <ActionBtn onClick={handlePrint} amber>🖨️ Print / Save PDF</ActionBtn>
           <ActionBtn onClick={onNewCase} navy>+ New Intake</ActionBtn>
         </div>
       </header>
@@ -97,7 +113,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
             <h3 style={{ fontSize: 15, fontWeight: 800, color: "#166534", marginBottom: 3 }}>FIR Draft Generated Successfully — FIR मसौदा तैयार</h3>
             <p style={{ fontSize: 13, color: "#15803d" }}>Review the draft below. Print or save as PDF for official submission and signature.</p>
           </div>
-          <button onClick={() => window.print()} style={{
+          <button onClick={handlePrint} style={{
             background: "#166534", border: "none", color: "#fff",
             padding: "10px 20px", borderRadius: 7, cursor: "pointer",
             fontSize: 13, fontWeight: 700, fontFamily: "inherit",
@@ -139,7 +155,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <ActionBtn onClick={handleCopy} white>{copied ? "✓ Copied" : "Copy"}</ActionBtn>
-              <ActionBtn onClick={() => window.print()} white>Print</ActionBtn>
+              <ActionBtn onClick={handlePrint} white>Print</ActionBtn>
             </div>
           </div>
 
@@ -173,7 +189,7 @@ export default function Draft({ state, onDashboard, onNewCase }) {
           <div style={{ display: "flex", gap: 10 }}>
             <ActionBtn onClick={onNewCase}>+ New FIR Intake</ActionBtn>
             <ActionBtn onClick={onDashboard} navy>Back to Dashboard</ActionBtn>
-            <ActionBtn onClick={() => window.print()} amber>🖨️ Print / Save PDF</ActionBtn>
+            <ActionBtn onClick={handlePrint} amber>🖨️ Print / Save PDF</ActionBtn>
           </div>
         </div>
       </div>

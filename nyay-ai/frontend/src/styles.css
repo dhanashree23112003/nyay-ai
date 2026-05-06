@@ -1,0 +1,50 @@
+/* ── Mobile responsive overrides ── */
+
+/* Dashboard */
+@media (max-width: 768px) {
+  .sidebar       { display: none !important; }
+  .sidebar.open  { display: flex !important; position: fixed; z-index: 200; width: 260px !important; }
+  .main-content  { margin-left: 0 !important; }
+  .stat-grid     { grid-template-columns: 1fr 1fr !important; }
+  .table-row     { grid-template-columns: 100px 1fr 80px !important; }
+  .table-row > *:nth-child(n+4) { display: none; }
+  .filter-bar    { flex-direction: column !important; }
+  .top-bar       { padding: 14px 16px !important; }
+}
+
+/* Intake two-column */
+@media (max-width: 900px) {
+  .intake-layout { flex-direction: column !important; }
+  .chat-panel    { width: 100% !important; max-height: 340px !important; position: static !important; }
+  .info-panel    { max-height: none !important; }
+  .field-grid    { grid-template-columns: 1fr !important; }
+}
+
+/* Login split */
+@media (max-width: 768px) {
+  .auth-layout     { flex-direction: column !important; }
+  .auth-left       { display: none !important; }
+  .auth-right      { width: 100% !important; padding: 32px 24px !important; }
+}
+
+/* Landing */
+@media (max-width: 768px) {
+  .hero-inner      { flex-direction: column !important; padding: 60px 24px 40px !important; }
+  .hero-card       { display: none !important; }
+  .stats-bar       { gap: 24px !important; padding: 24px !important; justify-content: space-between !important; }
+  .features-grid   { grid-template-columns: 1fr !important; }
+  .nav-links       { display: none !important; }
+}
+
+/* Draft */
+@media (max-width: 768px) {
+  .draft-doc       { padding: 24px 20px !important; }
+  .draft-header    { flex-wrap: wrap !important; gap: 8px !important; }
+  .draft-actions   { flex-wrap: wrap !important; gap: 6px !important; }
+  .summary-chips   { flex-wrap: wrap !important; }
+}
+
+/* General touch targets */
+@media (max-width: 768px) {
+  button { min-height: 40px; }
+}

@@ -347,10 +347,10 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
 
         {/* ── INTAKE ── */}
         {lang && subPhase === "intake" && extracted && (
-          <div style={{ display: "flex", gap: 20, paddingTop: 20, maxWidth: 1260, margin: "0 auto", animation: "fadeIn 0.5s ease" }}>
+          <div className="intake-layout" style={{ display: "flex", gap: 20, paddingTop: 20, maxWidth: 1260, margin: "0 auto", animation: "fadeIn 0.5s ease" }}>
 
             {/* Chat panel */}
-            <div style={{
+            <div className="chat-panel" style={{
               width: 360, flexShrink: 0,
               background: C.white, border: `1px solid ${C.border}`,
               borderRadius: 10, padding: 18,
