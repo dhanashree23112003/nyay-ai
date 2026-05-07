@@ -83,27 +83,23 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
     const r  = new SR();
 
     r.continuous     = true;
-    r.interimResults = true;
+    r.interimResults = false;  // ← KEY FIX: only fires when phrase is fully recognized
     r.lang           = lang === "english" ? "en-US" : "hi-IN";
 
     r.onresult = (e) => {
-      // Rebuild from ALL results every event — this is the correct Web Speech API pattern.
-      // Final results never change. Interim results replace, not append.
-      let finalText = "";
-      let interimText = "";
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          finalText += e.results[i][0].transcript + " ";
-        } else {
-          interimText += e.results[i][0].transcript;
+      // Each result here is 100% final — no interim, no duplicates possible.
+      // Use e.resultIndex so we only process NEW results, not all previous ones.
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0].transcript.trim();
+        if (text) {
+          setInputText(prev => prev ? prev + " " + text : text);
+          setTranscript(prev => prev ? prev + " " + text : text);
         }
       }
-      setTranscript(finalText + interimText);
-      setInputText(finalText + interimText);
     };
 
-    r.onerror = () => { setRecording(false); };
-    r.onend   = () => { setRecording(false); };  // no restart — avoids duplication
+    r.onerror = (ev) => { if (ev.error !== "no-speech") setRecording(false); };
+    r.onend   = () => { setRecording(false); };
 
     r.start();
     recognitionRef.current = r;
