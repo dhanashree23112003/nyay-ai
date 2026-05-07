@@ -44,8 +44,6 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
   const [followupAns,    setFollowupAns]    = useState("");
 
   const recognitionRef  = useRef(null);
-  const recordingActive = useRef(false);
-  const finalTextRef    = useRef("");   // persists across recognition restarts
   const chatEndRef      = useRef(null);
   const [speechSupported] = useState(() =>
     typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)
@@ -88,23 +86,20 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
     r.interimResults = true;
     r.lang           = lang === "english" ? "en-US" : "hi-IN";
 
-    finalTextRef.current = "";    // clear on each new session
-    let lastResultIndex = 0;
-
     r.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (i < lastResultIndex) continue;   // skip already-processed results
-        const t = e.results[i][0].transcript;
+      // Rebuild from ALL results every event — this is the correct Web Speech API pattern.
+      // Final results never change. Interim results replace, not append.
+      let finalText = "";
+      let interimText = "";
+      for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          finalTextRef.current += t + " ";
-          lastResultIndex = i + 1;
+          finalText += e.results[i][0].transcript + " ";
         } else {
-          interim += t;
+          interimText += e.results[i][0].transcript;
         }
       }
-      setTranscript(finalTextRef.current + interim);
-      setInputText(finalTextRef.current + interim);
+      setTranscript(finalText + interimText);
+      setInputText(finalText + interimText);
     };
 
     r.onerror = () => { setRecording(false); };
