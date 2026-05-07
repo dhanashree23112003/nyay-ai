@@ -82,53 +82,40 @@ export default function Intake({ user, onDraft, onDashboard, initialCase }) {
   const startRecording = () => {
     if (!speechSupported) { alert("Please use Google Chrome for voice input."); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r  = new SR();
 
-    finalTextRef.current = "";   // reset on fresh recording session
-    recordingActive.current = true;
+    r.continuous     = true;
+    r.interimResults = true;
+    r.lang           = lang === "english" ? "en-US" : "hi-IN";
 
-    const launch = () => {
-      const r = new SR();
-      r.continuous     = true;
-      r.interimResults = true;
-      r.lang           = lang === "english" ? "en-US" : "hi-IN";
+    finalTextRef.current = "";    // clear on each new session
+    let lastResultIndex = 0;
 
-      r.onresult = (e) => {
-        let interim = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          // Only append truly new final results — guard against re-emission on restart
-          if (e.results[i].isFinal) {
-            if (!finalTextRef.current.endsWith(t.trim() + " ")) {
-              finalTextRef.current += t + " ";
-            }
-          } else {
-            interim += t;
-          }
+    r.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (i < lastResultIndex) continue;   // skip already-processed results
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalTextRef.current += t + " ";
+          lastResultIndex = i + 1;
+        } else {
+          interim += t;
         }
-        setTranscript(finalTextRef.current + interim);
-        setInputText(finalTextRef.current + interim);
-      };
-
-      r.onerror = (ev) => {
-        if (ev.error !== "no-speech") { recordingActive.current = false; setRecording(false); }
-      };
-
-      r.onend = () => {
-        if (!recordingActive.current) { setRecording(false); return; }
-        // Create a fresh SR object on restart to avoid Chrome re-emitting old results
-        try { launch(); } catch { recordingActive.current = false; setRecording(false); }
-      };
-
-      r.start();
-      recognitionRef.current = r;
+      }
+      setTranscript(finalTextRef.current + interim);
+      setInputText(finalTextRef.current + interim);
     };
 
-    launch();
+    r.onerror = () => { setRecording(false); };
+    r.onend   = () => { setRecording(false); };  // no restart — avoids duplication
+
+    r.start();
+    recognitionRef.current = r;
     setRecording(true);
   };
 
   const stopRecording = () => {
-    recordingActive.current = false;
     recognitionRef.current?.stop();
     setRecording(false);
   };
