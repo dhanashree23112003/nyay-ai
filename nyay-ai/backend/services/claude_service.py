@@ -84,20 +84,14 @@ _QUESTIONS_HI = {
     "evidence":            "क्या कोई सबूत है? (CCTV, फोटो, मैसेज)",
 }
 
-# Fields needed before complaint_ready = true
-_CRITICAL = {"complainant_name", "incident_location", "incident_description"}
-
-# Priority order for asking
+# These fields MUST be asked (in order) before complaint_ready = true
+# Only stop early if user explicitly dismisses all of them
 _FIELD_ORDER = [
     "incident_location",
     "complainant_contact",
     "accused_name",
-    "accused_description",
     "incident_date",
-    "incident_time",
     "injury_or_loss",
-    "witnesses",
-    "evidence",
 ]
 
 _DISMISS_WORDS = {
@@ -123,8 +117,17 @@ def _next_question(extracted: dict, asked_fields: set, language: str) -> str | N
     return None  # nothing more to ask
 
 
+def _all_asked(extracted: dict, asked_fields: set) -> bool:
+    """True only when every field in _FIELD_ORDER has been filled OR asked."""
+    for field in _FIELD_ORDER:
+        val = extracted.get(field)
+        is_filled = bool(val) and val not in (None, [], "", "null", "not provided", "unknown")
+        if not is_filled and field not in asked_fields:
+            return False
+    return True
+
+
 def _is_ready(extracted: dict) -> bool:
-    """complaint_ready = name + location + description + at least one IPC section."""
     has_name = bool(extracted.get("complainant_name"))
     has_loc  = bool(extracted.get("incident_location"))
     has_desc = bool(extracted.get("incident_description"))
@@ -257,26 +260,29 @@ def continue_conversation(
     # ── Step 2: Override followup_question with our programmatic decision ────
     new_extracted = result.get("extracted", {})
 
-    # Merge with current_extracted so we don't lose previously filled fields
+    # Merge: don't lose previously filled fields
     merged = dict(current_extracted or {})
     for k, v in new_extracted.items():
         if v and v not in (None, [], "", "null", "not provided"):
             merged[k] = v
     result["extracted"] = merged
 
-    # Re-check if ready
-    if _is_ready(merged) and result.get("ipc_sections"):
+    # Always ask the next unanswered field FIRST.
+    # Only mark ready when ALL fields in _FIELD_ORDER have been asked/filled.
+    next_q = _next_question(merged, asked_fields, language)
+
+    if next_q:
+        # Still have mandatory fields to cover
+        result["complaint_ready"] = False
+        result["followup_question"] = next_q
+    elif _is_ready(merged) and result.get("ipc_sections"):
+        # All fields asked/filled AND critical fields present → ready
         result["complaint_ready"] = True
         result["followup_question"] = None
     else:
+        # All fields asked but still missing critical info → ask AI's suggestion
         result["complaint_ready"] = False
-        # Our code decides the next question — AI cannot override this
-        next_q = _next_question(merged, asked_fields, language)
-        result["followup_question"] = next_q
-        if not next_q:
-            # No more questions to ask — check if we have enough to be ready
-            if _is_ready(merged):
-                result["complaint_ready"] = True
+        result["followup_question"] = result.get("followup_question")
 
     return _fix_language(result, language)
 
