@@ -21,16 +21,14 @@ def _parse_json(raw: str) -> dict:
 
 
 def _is_hindi(text: str) -> bool:
-    """True if text contains Devanagari characters."""
     return bool(re.search(r'[ऀ-ॿ]', text))
 
 
 def _translate_to_english(text: str) -> str:
-    """Translate a single Hindi question to English using a tiny focused call."""
     resp = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": "You are a translator. Translate the following Hindi text to English. Return ONLY the translated text, nothing else."},
+            {"role": "system", "content": "Translate the following Hindi text to English. Return ONLY the translated sentence, nothing else."},
             {"role": "user", "content": text}
         ],
         temperature=0,
@@ -40,17 +38,11 @@ def _translate_to_english(text: str) -> str:
 
 
 def _fix_language(result: dict, language: str) -> dict:
-    """
-    If the model returned the followup_question in the wrong language,
-    translate it automatically. This is the guaranteed fallback.
-    """
     fq = result.get("followup_question")
     if not fq:
         return result
-
     if language == "english" and _is_hindi(fq):
         result["followup_question"] = _translate_to_english(fq)
-
     return result
 
 
@@ -61,14 +53,82 @@ def _date_context() -> str:
     return (
         f"TODAY: {now.strftime('%d %B %Y (%A), %I:%M %p IST')}\n"
         f"YESTERDAY: {yesterday.strftime('%d %B %Y (%A)')}\n"
-        f"DAY BEFORE YESTERDAY (parso): {day_before.strftime('%d %B %Y (%A)')}\n"
-        f"RULE: When the person uses relative time words — 'yesterday', 'kal', 'aaj', "
-        f"'last night', 'parso', 'do din pehle', 'last week', 'subah', 'raat', etc. — "
-        f"resolve them to the EXACT calendar date and clock time using the dates above. "
-        f"Store resolved date as DD Month YYYY in incident_date (e.g. '04 May 2026'), "
-        f"and resolved time as HH:MM AM/PM in incident_time (e.g. '07:00 PM'). "
-        f"Never store 'yesterday' or 'kal' literally.\n\n"
+        f"DAY BEFORE YESTERDAY: {day_before.strftime('%d %B %Y (%A)')}\n"
+        f"Resolve relative time words (yesterday/kal/aaj/last night/parso) to exact dates above.\n\n"
     )
+
+
+# ── Hardcoded questions so the AI never picks the wrong field ─────────────────
+
+_QUESTIONS_EN = {
+    "incident_location":   "Where did the incident occur? (city, area, or address)",
+    "complainant_contact": "What is the complainant's contact number?",
+    "accused_name":        "What is the name of the accused person?",
+    "accused_description": "Can you describe the accused? (appearance, age, gender)",
+    "incident_date":       "What date did the incident occur?",
+    "incident_time":       "What time did the incident occur?",
+    "injury_or_loss":      "What was stolen, damaged, or lost?",
+    "witnesses":           "Were there any witnesses to the incident?",
+    "evidence":            "Is there any evidence available (CCTV, photos, messages)?",
+}
+
+_QUESTIONS_HI = {
+    "incident_location":   "घटना कहाँ हुई थी? (शहर, इलाका या पता)",
+    "complainant_contact": "शिकायतकर्ता का संपर्क नंबर क्या है?",
+    "accused_name":        "आरोपी का नाम क्या है?",
+    "accused_description": "आरोपी का विवरण दें (उम्र, रंग, पहचान)?",
+    "incident_date":       "घटना किस तारीख को हुई?",
+    "incident_time":       "घटना किस समय हुई?",
+    "injury_or_loss":      "क्या चुराया गया, नुकसान हुआ, या चोट लगी?",
+    "witnesses":           "क्या कोई गवाह था?",
+    "evidence":            "क्या कोई सबूत है? (CCTV, फोटो, मैसेज)",
+}
+
+# Fields needed before complaint_ready = true
+_CRITICAL = {"complainant_name", "incident_location", "incident_description"}
+
+# Priority order for asking
+_FIELD_ORDER = [
+    "incident_location",
+    "complainant_contact",
+    "accused_name",
+    "accused_description",
+    "incident_date",
+    "incident_time",
+    "injury_or_loss",
+    "witnesses",
+    "evidence",
+]
+
+_DISMISS_WORDS = {
+    "no", "nahi", "nahin", "na", "nope", "nothing",
+    "pata nahi", "don't know", "dont know", "nai", "n",
+    "nhi", "nhii", "nhin", "unknown",
+}
+
+
+def _next_question(extracted: dict, asked_fields: set, language: str) -> str | None:
+    """
+    Programmatically decide the next field to ask about.
+    Returns the question string, or None if all critical fields are present.
+    """
+    questions = _QUESTIONS_EN if language == "english" else _QUESTIONS_HI
+
+    for field in _FIELD_ORDER:
+        val = extracted.get(field)
+        is_empty = not val or val in (None, "", [], "null", "not provided", "unknown")
+        if is_empty and field not in asked_fields:
+            return questions[field]
+
+    return None  # nothing more to ask
+
+
+def _is_ready(extracted: dict) -> bool:
+    """complaint_ready = name + location + description + at least one IPC section."""
+    has_name = bool(extracted.get("complainant_name"))
+    has_loc  = bool(extracted.get("incident_location"))
+    has_desc = bool(extracted.get("incident_description"))
+    return has_name and has_loc and has_desc
 
 
 def extract_incident(text: str, language: str = "hindi") -> dict:
@@ -82,10 +142,7 @@ def extract_incident(text: str, language: str = "hindi") -> dict:
         model=MODEL,
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": (
-                f"Incident description:\n\n{text}\n\n"
-                f"Remember: followup_question must be in {lang_line.upper()} only."
-            )}
+            {"role": "user",   "content": f"Incident description:\n\n{text}\n\nfollowup_question must be in {lang_line.upper()} only."}
         ],
         temperature=0.1,
         max_tokens=2000
@@ -94,16 +151,31 @@ def extract_incident(text: str, language: str = "hindi") -> dict:
     return _fix_language(result, language)
 
 
-def continue_conversation(history: list, new_message: str, language: str = "hindi", current_extracted: dict = None) -> dict:
+def continue_conversation(
+    history: list,
+    new_message: str,
+    language: str = "hindi",
+    current_extracted: dict = None
+) -> dict:
     """
-    Re-extracts all info from the full conversation history and asks
-    only the next unanswered question in the chosen language.
+    1. Use the AI to re-extract all facts from the full conversation.
+    2. Use Python code (not the AI) to decide what question to ask next.
+       This prevents the AI from repeating questions.
     """
+    # ── Build conversation transcript ────────────────────────────────────────
     transcript_lines = []
-    already_asked = []
+    asked_fields: set = set()   # field NAMES that have been asked already
+    questions_asked: list = []  # the actual question strings
+
+    questions_map = _QUESTIONS_EN if language == "english" else _QUESTIONS_HI
+    # Reverse map: question string → field name
+    reverse_map = {v: k for k, v in questions_map.items()}
+    # Also map English questions for Hindi sessions (in case of mixed)
+    for k, v in _QUESTIONS_EN.items():
+        reverse_map[v] = k
 
     for msg in history:
-        role = msg.get("role", "user")
+        role    = msg.get("role", "user")
         content = str(msg.get("content", ""))
 
         if role == "user":
@@ -113,60 +185,99 @@ def continue_conversation(history: list, new_message: str, language: str = "hind
                 parsed = _parse_json(content)
                 fq = parsed.get("followup_question")
                 if fq:
-                    already_asked.append(fq)
+                    questions_asked.append(fq)
                     transcript_lines.append(f"AI ASKED: {fq}")
+                    # Map question → field name
+                    field = reverse_map.get(fq)
+                    if field:
+                        asked_fields.add(field)
+                    else:
+                        # Try fuzzy match: if question mentions a keyword
+                        fl = fq.lower()
+                        if any(w in fl for w in ["location", "kahan", "कहाँ", "where"]):
+                            asked_fields.add("incident_location")
+                        elif any(w in fl for w in ["contact", "number", "phone", "संपर्क", "नंबर"]):
+                            asked_fields.add("complainant_contact")
+                        elif any(w in fl for w in ["accused", "aropee", "आरोपी", "name of"]):
+                            asked_fields.add("accused_name")
+                        elif any(w in fl for w in ["witness", "sakshi", "गवाह"]):
+                            asked_fields.add("witnesses")
+                        elif any(w in fl for w in ["evidence", "sabut", "सबूत"]):
+                            asked_fields.add("evidence")
+                        elif any(w in fl for w in ["date", "when", "kab", "तारीख"]):
+                            asked_fields.add("incident_date")
+                        elif any(w in fl for w in ["time", "samay", "समय"]):
+                            asked_fields.add("incident_time")
+                        elif any(w in fl for w in ["stolen", "loss", "chori", "नुकसान", "injury"]):
+                            asked_fields.add("injury_or_loss")
             except Exception:
                 transcript_lines.append("AI: (previous response)")
 
-    lang_line = "english" if language == "english" else "hindi"
-    transcript = "\n".join(transcript_lines)
-
-    # Build a summary of fields that are ALREADY filled from the DB state
-
+    # Also mark filled fields as "asked" so we never ask about them
     filled = {k: v for k, v in (current_extracted or {}).items()
-              if v and v != [] and v != "null"}
+              if v and v not in (None, [], "", "null", "not provided", "unknown")}
+    for field in filled:
+        asked_fields.add(field)
 
-    # Detect dismissive replies so we can flag them explicitly
-    _dismiss = {"no", "nahi", "nahin", "na", "nope", "nothing",
-                "pata nahi", "don't know", "dont know", "nai", "n"}
-    is_dismissal = new_message.strip().lower() in _dismiss
+    is_dismissal = new_message.strip().lower() in _DISMISS_WORDS
 
+    transcript = "\n".join(transcript_lines)
+    lang_line  = "english" if language == "english" else "hindi"
+
+    # ── Step 1: Ask AI to re-extract all facts from conversation ────────────
     system = (
-        f"RULE: Your followup_question MUST be in {lang_line.upper()} only.\n\n"
+        f"RULE: followup_question MUST be in {lang_line.upper()} only.\n\n"
         + _date_context()
         + CONVERSATION_SYSTEM_PROMPT
     )
 
     user_prompt = (
-        f"ALREADY FILLED FIELDS (extracted from conversation so far — "
-        f"DO NOT ask about any of these again):\n"
-        f"{json.dumps(filled, ensure_ascii=False, indent=2)}\n\n"
-        f"QUESTIONS ALREADY ASKED — DO NOT REPEAT EVEN IF REPHRASED:\n"
-        f"{json.dumps(already_asked, ensure_ascii=False, indent=2)}\n\n"
-        f"CONVERSATION:\n{transcript}\n\n"
-        f"USER'S LATEST REPLY: {new_message}\n"
-        + (f"(User said NO — accept this, skip this field, move to the next one.)\n"
-           if is_dismissal else "") +
-        f"\nInstructions:\n"
-        f"1. Use the ALREADY FILLED FIELDS above — do NOT ask about any field that already has a value.\n"
-        f"2. Do NOT repeat any question from the ALREADY ASKED list, even rephrased.\n"
-        f"3. If the user's reply was dismissive ('no', 'nahi', etc.) mark that field as done and move on.\n"
-        f"4. Ask only the NEXT missing field that is null AND hasn't been asked yet.\n"
-        f"5. followup_question MUST be in {lang_line.upper()} only.\n"
-        f"6. If complainant_name + incident_location + incident_description + at least one IPC section "
-        f"are all present, set complaint_ready=true and followup_question=null immediately."
+        f"FULL CONVERSATION:\n{transcript}\n\n"
+        f"USER'S LATEST REPLY: {new_message}"
+        + ("\n(User gave a dismissive answer — treat this field as done.)" if is_dismissal else "")
+        + f"\n\nALREADY FILLED FIELDS:\n{json.dumps(filled, ensure_ascii=False, indent=2)}\n\n"
+        f"Instructions:\n"
+        f"1. Re-extract ALL facts from the ENTIRE conversation above.\n"
+        f"2. Set followup_question to null — the system will decide what to ask next.\n"
+        f"3. Set complaint_ready=true if complainant_name + incident_location + incident_description + IPC section are all present.\n"
+        f"4. followup_question MUST be in {lang_line.upper()} only.\n"
     )
 
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": user_prompt}
+            {"role": "user",   "content": user_prompt}
         ],
         temperature=0.1,
         max_tokens=2000
     )
     result = _parse_json(response.choices[0].message.content)
+
+    # ── Step 2: Override followup_question with our programmatic decision ────
+    new_extracted = result.get("extracted", {})
+
+    # Merge with current_extracted so we don't lose previously filled fields
+    merged = dict(current_extracted or {})
+    for k, v in new_extracted.items():
+        if v and v not in (None, [], "", "null", "not provided"):
+            merged[k] = v
+    result["extracted"] = merged
+
+    # Re-check if ready
+    if _is_ready(merged) and result.get("ipc_sections"):
+        result["complaint_ready"] = True
+        result["followup_question"] = None
+    else:
+        result["complaint_ready"] = False
+        # Our code decides the next question — AI cannot override this
+        next_q = _next_question(merged, asked_fields, language)
+        result["followup_question"] = next_q
+        if not next_q:
+            # No more questions to ask — check if we have enough to be ready
+            if _is_ready(merged):
+                result["complaint_ready"] = True
+
     return _fix_language(result, language)
 
 
@@ -175,7 +286,7 @@ def generate_complaint_draft(case_data: dict) -> str:
         model=MODEL,
         messages=[
             {"role": "system", "content": COMPLAINT_DRAFT_PROMPT},
-            {"role": "user", "content": f"Generate FIR complaint for this case:\n\n{json.dumps(case_data, indent=2, ensure_ascii=False)}"}
+            {"role": "user",   "content": f"Generate FIR complaint:\n\n{json.dumps(case_data, indent=2, ensure_ascii=False)}"}
         ],
         temperature=0.2,
         max_tokens=2000
