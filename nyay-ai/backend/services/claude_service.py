@@ -13,20 +13,31 @@ _Q_EN = {
     "incident_location":   "Where did the incident occur? (city, area or address)",
     "complainant_contact": "What is the complainant's contact number?",
     "accused_name":        "What is the name of the accused person?",
+    "accused_description": "Can you describe the accused? (age, appearance, clothing)",
     "incident_date":       "On what date did the incident occur?",
+    "incident_time":       "At what time did the incident occur?",
     "injury_or_loss":      "What was stolen, damaged or lost?",
 }
 _Q_HI = {
     "incident_location":   "घटना कहाँ हुई थी? (शहर, इलाका या पता)",
     "complainant_contact": "शिकायतकर्ता का संपर्क नंबर क्या है?",
     "accused_name":        "आरोपी का नाम क्या है?",
+    "accused_description": "आरोपी का विवरण बताएं? (उम्र, रंग-रूप, कपड़े)",
     "incident_date":       "घटना किस तारीख को हुई?",
+    "incident_time":       "घटना किस समय हुई?",
     "injury_or_loss":      "क्या चुराया गया, क्या नुकसान हुआ या चोट लगी?",
 }
 
 # Ask in this order before marking complaint_ready
-_FIELD_ORDER = ["incident_location", "complainant_contact", "accused_name",
-                "incident_date", "injury_or_loss"]
+_FIELD_ORDER = [
+    "incident_location",
+    "complainant_contact",
+    "accused_name",
+    "accused_description",
+    "incident_date",
+    "incident_time",
+    "injury_or_loss",
+]
 
 _DISMISS = {"no","nahi","nahin","na","nope","nothing","pata nahi",
             "don't know","dont know","nai","n","nhi","unknown"}
@@ -210,9 +221,9 @@ def continue_conversation(
 
     # If AI missed mapping last_field answer, do it ourselves
     if last_field and not is_dismissal and not _is_filled(merged.get(last_field)):
-        if last_field in ("complainant_contact", "accused_name", "incident_location",
-                          "incident_date", "injury_or_loss", "accused_description",
-                          "complainant_name", "incident_time"):
+        if last_field in ("complainant_contact", "accused_name", "accused_description",
+                          "incident_location", "incident_date", "incident_time",
+                          "injury_or_loss", "complainant_name"):
             merged[last_field] = new_message.strip()
 
     result["extracted"] = merged
